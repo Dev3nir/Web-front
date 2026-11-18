@@ -11,6 +11,10 @@ import {
   SafetyCertificateOutlined, EnvironmentOutlined, CalendarOutlined, LinkOutlined,
 } from "@ant-design/icons";
 
+import LoginPage from "./pages/Login.page";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+
 const { Header, Content, Footer } = Layout;
 const { Title, Paragraph, Text } = Typography;
 
@@ -79,7 +83,10 @@ export default function App() {
   const [ambito, setAmbito] = useState("Mundo");
   const pct = ambito === "Mundo" ? 22.3 : 3.5;
 
-  const goLogin = () => { window.location.href = "/login"; }; // ajusta a tu ruta
+
+  const navigate = useNavigate();
+
+  const goLogin = () => navigate("/login");
 
   return (
     <ConfigProvider

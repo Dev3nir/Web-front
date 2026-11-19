@@ -81,7 +81,7 @@ createRoot(document.getElementById('root')).render(
           } />
 
           {/* Admin */}
-          <Route path="admin" element={
+          <Route path="usuarios" element={
             <ProtectedRoute requiredRole="administrador">
               <AdminPage />
             </ProtectedRoute>

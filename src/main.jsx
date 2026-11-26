@@ -15,10 +15,9 @@ import AppLayout from './layouts/AppLayout.jsx'
 // Panel home (todos los roles)
 import PanelHome from './pages/PanelHome.page.jsx'
 
-// Módulo 2 — Inventario (rutas → ./pages/Modulo2/...)
-import EquiposList from './pages/Modulo2/EquiposList.page.jsx'
-import EquipoForm from './pages/Modulo2/EquipoForm.page.jsx'
-import EquipoDetalle from './pages/Modulo2/EquipoDetalle.page.jsx'
+// Módulo 2 — Inventario
+import EquiposList from './pages/Modulo2/InventarioPage.jsx'
+
 
 // Módulo 3 — Reparación
 import DiagnosticosList from './pages/Modulo3/DiagnosticosList.page.jsx'
@@ -51,10 +50,8 @@ createRoot(document.getElementById('root')).render(
           <Route index element={<PanelHome />} />
 
           {/* Módulo 2 — Inventario */}
+          {/* Módulo 2 — Inventario */}
           <Route path="equipos" element={<EquiposList />} />
-          <Route path="equipos/nuevo" element={<EquipoForm />} />
-          <Route path="equipos/:id" element={<EquipoDetalle />} />
-          <Route path="equipos/:id/editar" element={<EquipoForm />} />
 
           {/* Módulo 3 — Reparación (responsable + admin) */}
           <Route path="diagnosticos" element={

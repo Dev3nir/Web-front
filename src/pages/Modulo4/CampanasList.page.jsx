@@ -17,10 +17,11 @@ import {
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
-// ⚠️ Ajusta etiquetas/colores si tu back usa otros valores de estado
 const ESTADOS = {
-  activa: { label: "Activa", color: "green" },
-  finalizada: { label: "Finalizada", color: "default" },
+  borrador:   { label: "Borrador",   color: "default" },
+  publicada:  { label: "Publicada",  color: "green" },
+  finalizada: { label: "Finalizada", color: "blue" },
+  cancelada:  { label: "Cancelada",  color: "red" },
 };
 const ESTADO_OPTIONS = Object.entries(ESTADOS).map(([value, e]) => ({ value, label: e.label }));
 
@@ -68,7 +69,7 @@ export default function CampanasList() {
   // ---------- crear / editar ----------
   const abrirCrear = () => {
     form.resetFields();
-    form.setFieldsValue({ estado: "activa" });
+    form.setFieldsValue({ estado: "publicada" });
     setModal({ open: true, editing: null });
   };
 

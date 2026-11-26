@@ -12,6 +12,8 @@ const MENU = [
   ["repar",      "Reparaciones",    "/panel/reparaciones",    ["responsable","administrador"]],
   ["campanas",   "Campañas",        "/panel/campanas",        ["responsable","administrador"]],
   ["partic",     "Participaciones", "/panel/participaciones", ["capturista","responsable","administrador"]],
+  ["movim",    "Movimientos", "/panel/movimientos", ["capturista","responsable","administrador"]],
+  ["gestores", "Gestores",    "/panel/gestores",    ["capturista","responsable","administrador"]],
   ["reportes",   "Reportes",        "/panel/reportes",        ["responsable","administrador"]],
   ["usuarios",   "Usuarios",        "/panel/usuarios",        ["administrador"]],
 ];

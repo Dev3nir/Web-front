@@ -34,6 +34,9 @@ import Reportes from './pages/Modulo5/Reportes.page.jsx'
 // Admin
 import AdminPage from './pages/admin/Admin.page.jsx'
 
+import MovimientosList from './pages/Trazabilidad/MovimientosList.page.jsx'
+import GestoresList from './pages/Trazabilidad/GestoresList.page.jsx'
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
@@ -79,6 +82,9 @@ createRoot(document.getElementById('root')).render(
               <Reportes />
             </ProtectedRoute>
           } />
+
+          <Route path="movimientos" element={<MovimientosList />} />
+          <Route path="gestores" element={<GestoresList />} />
 
           {/* Admin */}
           <Route path="usuarios" element={

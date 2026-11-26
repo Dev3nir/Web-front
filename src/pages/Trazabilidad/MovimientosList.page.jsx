@@ -1,5 +1,4 @@
 // src/pages/Trazabilidad/MovimientosList.page.jsx
-// Movimientos de equipos (trazabilidad: reasignación, reparación, entrega a gestor, baja...)
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -7,12 +6,12 @@ import {
   Tooltip, Typography, Card, message, Alert, Row, Col,
 } from "antd";
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, CheckCircleOutlined,
+  PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, 
   NodeIndexOutlined, ClearOutlined,
 } from "@ant-design/icons";
 import {
   listarMovimientos, tiposMovimiento, crearMovimiento, actualizarMovimiento,
-  validarMovimiento, eliminarMovimiento,
+  eliminarMovimiento,
 } from "../../services/movimientos.service.js";
 import { listarGestores } from "../../services/gestores.service.js";
 import { apiFetch } from "../../utils/api.js";
@@ -20,29 +19,26 @@ import { apiFetch } from "../../utils/api.js";
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-// Respaldo por si /movimientos/tipos no responde
 const TIPOS_DEFAULT = [
-  { tipo: "ingreso", etiqueta: "Ingreso al inventario" },
-  { tipo: "reasignacion", etiqueta: "Reasignación / reutilización" },
-  { tipo: "envio_reparacion", etiqueta: "Envío a reparación" },
-  { tipo: "retorno_reparacion", etiqueta: "Regreso de reparación" },
-  { tipo: "almacenamiento", etiqueta: "Almacenamiento / resguardo" },
-  { tipo: "entrega_gestor", etiqueta: "Entrega a gestor especializado" },
-  { tipo: "baja", etiqueta: "Baja definitiva" },
+  { tipo: "reasignacion", etiqueta: "Reasignación" },
+  { tipo: "reutilizacion", etiqueta: "Reutilización" },
+  { tipo: "conservacion", etiqueta: "Conservación / resguardo" },
+  { tipo: "gestion_especializada", etiqueta: "Entrega a gestor especializado" },
 ];
 
 const COLOR_TIPO = {
-  ingreso: "blue", reasignacion: "green", envio_reparacion: "gold", retorno_reparacion: "cyan",
-  almacenamiento: "default", entrega_gestor: "purple", baja: "red",
+  reasignacion: "green",
+  reutilizacion: "cyan",
+  conservacion: "gold",
+  gestion_especializada: "purple",
 };
 
-// Qué pide cada tipo (mismas reglas que el back, para avisar antes de enviar)
+// Qué pide cada tipo (mismas reglas que el back)
 const REGLAS = {
-  reasignacion: { destino: "¿A qué laboratorio, departamento o usuario se reasigna?" },
-  envio_reparacion: { destino: "Taller o área que hará la reparación" },
-  almacenamiento: { destino: "Ubicación donde queda resguardado" },
-  entrega_gestor: { gestor: true },
-  baja: { motivo: true },
+  reasignacion:          { destino: "¿A qué laboratorio, departamento o usuario se reasigna?" },
+  reutilizacion:         { destino: "¿Dónde se reutiliza el equipo?" },
+  conservacion:          { destino: "¿Dónde queda resguardado el equipo?" },
+  gestion_especializada: { gestor: true, destino: "¿A qué planta o centro de acopio se entrega?"},
 };
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
@@ -59,16 +55,21 @@ export default function MovimientosList() {
   const [tipos, setTipos] = useState(TIPOS_DEFAULT);
   const [gestores, setGestores] = useState([]);
   const [equipos, setEquipos] = useState([]);
-  const [recientes, setRecientes] = useState([]); // para el capturista: lo que registró en esta sesión
+  const [recientes, setRecientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  
   const [filtros, setFiltros] = useState({
-    id_equipo: params.get("equipo") || undefined, tipo: undefined, validado: undefined, desde: "", hasta: "",
+    equipo_id: params.get("equipo") || undefined, 
+    tipo: undefined, 
+    desde: "", 
+    hasta: "",
   });
+  
   const [modal, setModal] = useState({ open: false, editing: null });
   const [form] = Form.useForm();
   const tipoSel = Form.useWatch("tipo", form);
-  const gestorSel = Form.useWatch("id_gestor", form);
+  const gestorSel = Form.useWatch("gestor_id", form);
 
   const etiquetaTipo = (t) => tipos.find((x) => x.tipo === t)?.etiqueta ?? t;
 
@@ -99,7 +100,7 @@ export default function MovimientosList() {
   };
 
   const limpiarFiltros = () =>
-    aplicarFiltro({ id_equipo: undefined, tipo: undefined, validado: undefined, desde: "", hasta: "" });
+    aplicarFiltro({ equipo_id: undefined, tipo: undefined, desde: "", hasta: "" });
 
   const gestorElegido = useMemo(
     () => gestores.find((g) => String(g.id) === String(gestorSel)),
@@ -108,22 +109,30 @@ export default function MovimientosList() {
 
   const opcionesEquipo = equipos.map((e) => ({
     value: e.id,
-    label: `#${e.id} · ${[e.marca, e.modelo].filter(Boolean).join(" ") || "Equipo"}`,
+    label: `#${e.id} · ${e.codigo || ""} ${[e.marca, e.modelo].filter(Boolean).join(" ") || "Equipo"}`,
   }));
 
   // ---------- crear / editar ----------
   const abrirCrear = () => {
     form.resetFields();
-    form.setFieldsValue({ tipo: "reasignacion", fecha: hoyISO(), id_equipo: filtros.id_equipo ? Number(filtros.id_equipo) : undefined });
+    form.setFieldsValue({ 
+      tipo: "reasignacion", 
+      fecha: hoyISO(), 
+      equipo_id: filtros.equipo_id ? Number(filtros.equipo_id) : undefined 
+    });
     setModal({ open: true, editing: null });
   };
 
   const abrirEditar = (m) => {
     form.resetFields();
     form.setFieldsValue({
-      id_equipo: m.id_equipo, tipo: m.tipo, fecha: m.fecha ? String(m.fecha).slice(0, 10) : undefined,
-      destino: m.destino, id_gestor: m.id_gestor, cantidad_kg: m.cantidad_kg ? Number(m.cantidad_kg) : null,
-      evidencia: m.evidencia, observaciones: m.observaciones,
+      equipo_id: m.equipo_id, 
+      tipo: m.tipo, 
+      fecha: m.fecha ? String(m.fecha).slice(0, 10) : undefined,
+      destino: m.destino, 
+      gestor_id: m.gestor_id, 
+      peso_kg: m.peso_kg ? Number(m.peso_kg) : null,
+      observaciones: m.observaciones,
     });
     setModal({ open: true, editing: m });
   };
@@ -132,24 +141,24 @@ export default function MovimientosList() {
     try {
       const v = await form.validateFields();
       setSaving(true);
-      const esEntrega = v.tipo === "entrega_gestor";
+      const esEntrega = v.tipo === "gestion_especializada";
+      
       const data = {
-        id_equipo: v.id_equipo,
+        equipo_id: v.equipo_id,
         tipo: v.tipo,
         fecha: v.fecha || null,
-        destino: REGLAS[v.tipo]?.destino ? v.destino?.trim() || null : null,
-        id_gestor: esEntrega ? v.id_gestor : null,
-        cantidad_kg: esEntrega ? v.cantidad_kg ?? null : null,
-        evidencia: esEntrega ? v.evidencia?.trim() || null : null,
+        destino: v.destino?.trim() || null,
+        gestor_id: esEntrega ? v.gestor_id : null,
+        peso_kg: esEntrega ? v.peso_kg ?? null : null,
         observaciones: v.observaciones?.trim() || null,
       };
+      
       const resp = modal.editing
         ? await actualizarMovimiento(modal.editing.id, data)
         : await crearMovimiento(data);
 
       message.success(resp?.message || "Guardado");
-      (resp?.advertencias || []).forEach((a) => message.warning(a, 6));
-
+      
       if (!puedeVer && !modal.editing) {
         setRecientes((r) => [{ ...data, id: resp?.id, fecha: data.fecha || hoyISO() }, ...r]);
       }
@@ -177,7 +186,7 @@ export default function MovimientosList() {
   const columns = [
     { title: "Fecha", dataIndex: "fecha", width: 160, render: fechaTxt, sorter: (a, b) => new Date(a.fecha) - new Date(b.fecha) },
     {
-      title: "Equipo", dataIndex: "id_equipo",
+      title: "Equipo", dataIndex: "equipo_id",
       render: (v, r) => (
         <div>
           <Text strong>#{v}</Text>{" "}
@@ -189,13 +198,12 @@ export default function MovimientosList() {
     {
       title: "Destino / gestor",
       render: (_, r) =>
-        r.tipo === "entrega_gestor" ? (
+        r.tipo === "gestion_especializada" ? (
           <div>
-            {r.gestor_nombre}{" "}
-            {!r.gestor_verificado && <Tag color="warning">Gestor sin verificar</Tag>}
+            {r.gestor_nombre}
             <br />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {r.cantidad_kg ? `${Number(r.cantidad_kg)} kg` : ""}{r.evidencia ? ` · ${r.evidencia}` : ""}
+              {r.peso_kg ? `${Number(r.peso_kg)} kg` : ""}
             </Text>
           </div>
         ) : (
@@ -204,35 +212,18 @@ export default function MovimientosList() {
     },
     { title: "Registró", dataIndex: "responsable_nombre", render: (v) => v || "—" },
     {
-      title: "Validación", dataIndex: "validado",
-      render: (v, r) =>
-        v ? (
-          <Tooltip title={`${r.validado_por_nombre || ""} · ${fechaTxt(r.validado_en)}`}>
-            <Tag icon={<CheckCircleOutlined />} color="success">Validado</Tag>
-          </Tooltip>
-        ) : (
-          <Tag color="default">Pendiente</Tag>
-        ),
-    },
-    {
       title: "Acciones", fixed: "right",
       render: (_, r) => (
         <Space size="small">
-          {!r.validado && (
-            <Popconfirm title="¿Validar movimiento?" description="Ya no se podrá editar ni eliminar."
-              okText="Validar" cancelText="Cancelar" onConfirm={() => accion(() => validarMovimiento(r.id))}>
-              <Tooltip title="Validar"><Button type="primary" ghost icon={<CheckCircleOutlined />} /></Tooltip>
-            </Popconfirm>
-          )}
-          <Tooltip title={r.validado ? "Validado: no editable" : "Editar"}>
-            <Button icon={<EditOutlined />} disabled={Boolean(r.validado)} onClick={() => abrirEditar(r)} />
+          <Tooltip title="Editar">
+            <Button icon={<EditOutlined />} onClick={() => abrirEditar(r)} />
           </Tooltip>
           {esAdmin && (
             <Popconfirm title="¿Eliminar movimiento?" okText="Eliminar" okButtonProps={{ danger: true }}
-              cancelText="Cancelar" disabled={Boolean(r.validado)}
+              cancelText="Cancelar"
               onConfirm={() => accion(() => eliminarMovimiento(r.id))}>
-              <Tooltip title={r.validado ? "Validado: forma parte del historial" : "Eliminar"}>
-                <Button danger icon={<DeleteOutlined />} disabled={Boolean(r.validado)} />
+              <Tooltip title="Eliminar">
+                <Button danger icon={<DeleteOutlined />} />
               </Tooltip>
             </Popconfirm>
           )}
@@ -241,7 +232,6 @@ export default function MovimientosList() {
     },
   ];
 
-  const pendientes = movs.filter((m) => !m.validado).length;
   const regla = REGLAS[tipoSel] || {};
 
   return (
@@ -252,7 +242,7 @@ export default function MovimientosList() {
           <div>
             <Title level={3} style={{ margin: 0 }}>Movimientos de equipos</Title>
             <Text type="secondary">
-              {puedeVer ? `${movs.length} mostrados · ${pendientes} pendientes de validar` : "Registra a dónde va cada equipo"}
+              {puedeVer ? `${movs.length} mostrados` : "Registra a dónde va cada equipo"}
             </Text>
           </div>
         </Space>
@@ -264,19 +254,17 @@ export default function MovimientosList() {
           <Space wrap style={{ marginBottom: 16 }}>
             {opcionesEquipo.length ? (
               <Select allowClear showSearch optionFilterProp="label" placeholder="Equipo" style={{ width: 220 }}
-                options={opcionesEquipo} value={filtros.id_equipo ? Number(filtros.id_equipo) : undefined}
-                onChange={(v) => aplicarFiltro({ id_equipo: v })} />
+                options={opcionesEquipo} value={filtros.equipo_id ? Number(filtros.equipo_id) : undefined}
+                onChange={(v) => aplicarFiltro({ equipo_id: v })} />
             ) : (
               <InputNumber min={1} placeholder="Id de equipo" style={{ width: 140 }}
-                value={filtros.id_equipo ? Number(filtros.id_equipo) : null}
-                onChange={(v) => aplicarFiltro({ id_equipo: v || undefined })} />
+                value={filtros.equipo_id ? Number(filtros.equipo_id) : null}
+                onChange={(v) => aplicarFiltro({ equipo_id: v || undefined })} />
             )}
             <Select allowClear placeholder="Tipo" style={{ width: 220 }} value={filtros.tipo}
               options={tipos.map((t) => ({ value: t.tipo, label: t.etiqueta }))}
               onChange={(v) => aplicarFiltro({ tipo: v })} />
-            <Select allowClear placeholder="Validación" style={{ width: 150 }} value={filtros.validado}
-              options={[{ value: "1", label: "Validados" }, { value: "0", label: "Pendientes" }]}
-              onChange={(v) => aplicarFiltro({ validado: v })} />
+           
             <Input type="date" aria-label="Desde" style={{ width: 150 }} value={filtros.desde} max={filtros.hasta || hoyISO()}
               onChange={(e) => aplicarFiltro({ desde: e.target.value })} />
             <Input type="date" aria-label="Hasta" style={{ width: 150 }} value={filtros.hasta} min={filtros.desde} max={hoyISO()}
@@ -291,14 +279,14 @@ export default function MovimientosList() {
       ) : (
         <Card style={{ marginTop: 16 }}>
           <Alert type="info" showIcon style={{ marginBottom: 16 }}
-            message="Puedes registrar movimientos; un responsable ambiental los revisa y valida." />
-          <Table rowKey={(r) => r.id ?? `${r.id_equipo}-${r.tipo}`} size="small" pagination={false} dataSource={recientes}
+            message="Puedes registrar movimientos; un responsable ambiental los revisa." />
+          <Table rowKey={(r) => r.id ?? `${r.equipo_id}-${r.tipo}`} size="small" pagination={false} dataSource={recientes}
             locale={{ emptyText: "Aún no registras movimientos en esta sesión" }}
             columns={[
-              { title: "Equipo", dataIndex: "id_equipo", render: (v) => `#${v}` },
+              { title: "Equipo", dataIndex: "equipo_id", render: (v) => `#${v}` },
               { title: "Tipo", dataIndex: "tipo", render: (v) => <Tag color={COLOR_TIPO[v]}>{etiquetaTipo(v)}</Tag> },
               { title: "Destino", dataIndex: "destino", render: (v) => v || "—" },
-              { title: "Estado", render: () => <Tag>Pendiente de validar</Tag> },
+              { title: "Estado", render: () => <Tag>Registrado</Tag> },
             ]} />
         </Card>
       )}
@@ -310,7 +298,7 @@ export default function MovimientosList() {
         <Form form={form} layout="vertical" requiredMark="optional">
           <Row gutter={12}>
             <Col xs={24} sm={14}>
-              <Form.Item name="id_equipo" label="Equipo" rules={[{ required: true, message: "Elige el equipo" }]}>
+              <Form.Item name="equipo_id" label="Equipo" rules={[{ required: true, message: "Elige el equipo" }]}>
                 {opcionesEquipo.length ? (
                   <Select showSearch optionFilterProp="label" placeholder="Buscar equipo" options={opcionesEquipo} />
                 ) : (
@@ -331,41 +319,30 @@ export default function MovimientosList() {
           </Form.Item>
 
           {regla.destino && (
-            <Form.Item name="destino" label="Destino" rules={[{ required: true, whitespace: true, message: regla.destino }, { max: 255 }]}>
+            <Form.Item name="destino" label="Destino" rules={[{ required: true, whitespace: true, message: regla.destino }, { max: 150 }]}>
               <Input placeholder={regla.destino} />
             </Form.Item>
           )}
 
           {regla.gestor && (
             <>
-              <Form.Item name="id_gestor" label="Gestor" rules={[{ required: true, message: "Elige el gestor" }]}>
+              <Form.Item name="gestor_id" label="Gestor" rules={[{ required: true, message: "Elige el gestor" }]}>
                 <Select showSearch optionFilterProp="label" placeholder="Gestor activo"
                   notFoundContent="No hay gestores activos"
-                  options={gestores.map((g) => ({ value: g.id, label: `${g.nombre}${g.verificado ? "" : " (sin verificar)"}` }))} />
+                  options={gestores.map((g) => ({ value: g.id, label: g.nombre }))} />
               </Form.Item>
-              {gestorElegido && !gestorElegido.verificado && (
-                <Alert type="warning" showIcon style={{ marginBottom: 16 }}
-                  message="Este gestor no está verificado. La entrega se registra, pero no se podrá validar ni contará como destino autorizado." />
-              )}
               <Row gutter={12}>
-                <Col xs={24} sm={10}>
-                  <Form.Item name="cantidad_kg" label="Peso entregado (kg)" rules={[{ required: true, message: "Registra el peso" }]}>
+                <Col xs={24} sm={24}>
+                  <Form.Item name="peso_kg" label="Peso entregado (kg)" rules={[{ required: true, message: "Registra el peso" }]}>
                     <InputNumber min={0.01} step={0.5} style={{ width: "100%" }} />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} sm={14}>
-                  <Form.Item name="evidencia" label="Evidencia (folio / manifiesto)"
-                    rules={[{ required: true, whitespace: true, message: "Registra la evidencia de entrega" }, { max: 255 }]}>
-                    <Input placeholder="ej. MAN-2026-001" />
                   </Form.Item>
                 </Col>
               </Row>
             </>
           )}
 
-          <Form.Item name="observaciones" label={regla.motivo ? "Motivo de la baja" : "Observaciones"}
-            rules={regla.motivo ? [{ required: true, whitespace: true, message: "Explica el motivo de la baja" }] : []}>
-            <TextArea rows={3} maxLength={1000} showCount />
+          <Form.Item name="observaciones" label="Observaciones">
+            <TextArea rows={3} maxLength={255} showCount />
           </Form.Item>
         </Form>
       </Modal>

@@ -1,6 +1,6 @@
-// Landing pública – Módulo 1 (Página de inicio y concientización)
-// Uso: npm i antd @ant-design/icons  →  reemplaza src/App.jsx con este archivo
-import { useState } from "react";
+
+import { useState, useEffect } from "react"; 
+import API_URL from "./config/backend.js"; 
 import {
   ConfigProvider, Layout, Grid, Button, Drawer, Row, Col, Card, Statistic,
   Segmented, Typography, Steps, Tag, Collapse, List, Space,
@@ -83,10 +83,32 @@ export default function App() {
   const [ambito, setAmbito] = useState("Mundo");
   const pct = ambito === "Mundo" ? 22.3 : 3.5;
 
+  const [campanas, setCampanas] = useState([]);
+  const [loadingCampanas, setLoadingCampanas] = useState(true);
 
   const navigate = useNavigate();
 
   const goLogin = () => navigate("/login");
+
+
+  useEffect(() => {
+    const cargar = async () => {
+      try {
+        const res = await fetch(`${API_URL}/campanas`);
+        if (res.ok) {
+          const data = await res.json();
+          
+          const visibles = data.filter(c => c.estado === 'Publicada' || c.estado === 'Borrador');
+          setCampanas(visibles);
+        }
+      } catch (error) {
+        console.error("Error cargando campañas", error);
+      } finally {
+        setLoadingCampanas(false);
+      }
+    };
+    cargar();
+  }, []);
 
   return (
     <ConfigProvider
@@ -248,19 +270,37 @@ export default function App() {
     <section id="campanas">
     <div className="wrap">
     <Title level={2}>Campañas de recolección</Title>
-    <Paragraph style={{ fontSize: 17 }}>Ejemplos de campañas; se mostrarán aquí las que publique el responsable ambiental.</Paragraph>
-    <Row gutter={[16, 16]}>
-    {CAMPANAS.map((c) => (
-      <Col xs={24} md={8} key={c.id}>
-      <Card style={{ height: "100%" }} actions={[<Button type="link" key="m" style={{ color: C.graphite }}>Ver detalles</Button>]}>
-      <Title level={4} style={{ marginTop: 0 }}>{c.nombre}</Title>
-      <p><CalendarOutlined /> {c.fechas}</p>
-      <p><EnvironmentOutlined /> {c.lugar}</p>
-      <Space wrap>{c.tipos.map((t) => <Tag key={t} color="green">{t}</Tag>)}</Space>
-      </Card>
-      </Col>
-    ))}
-    </Row>
+    <Paragraph style={{ fontSize: 17 }}>
+      Conoce las campañas activas de recolección y los residuos que se aceptan.
+    </Paragraph>
+    
+    {loadingCampanas ? (
+      <p>Cargando campañas...</p>
+    ) : campanas.length === 0 ? (
+      <p>No hay campañas programadas por el momento.</p>
+    ) : (
+      <Row gutter={[16, 16]}>
+        {campanas.map((c) => (
+          <Col xs={24} md={8} key={c.id}>
+            <Card style={{ height: "100%" }} actions={[<Button type="link" key="m" style={{ color: C.graphite }}>Ver detalles</Button>]}>
+              <Title level={4} style={{ marginTop: 0 }}>{c.nombre}</Title>
+              <p><CalendarOutlined /> {c.fecha_inicio} al {c.fecha_fin}</p>
+              <p><EnvironmentOutlined /> {c.ubicacion}</p>
+              <Space wrap>
+                
+                {c.tipos_aceptados ? (
+                   c.tipos_aceptados.split(',').map((t, idx) => (
+                     <Tag key={idx} color="green">{t.trim()}</Tag>
+                   ))
+                ) : (
+                   <Tag color="green">Ver tipos</Tag>
+                )}
+              </Space>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+    )}
     </div>
     </section>
 

@@ -7,7 +7,7 @@ import { Form, Input, Button, Typography } from "antd";
 import Logo from "../assets/logos/logo.png";
 import imagen from "../assets/img_login.jpg";
 import API_URL from "../config/backend.js";
-
+import { ArrowLeftOutlined } from "@ant-design/icons";
 const { Title, Text } = Typography;
 
 
@@ -114,6 +114,22 @@ const LoginPage = () => {
         <div style={{ width: "100%", maxWidth: "400px" }}>
           {/* Logo y encabezado */}
           <div style={{ textAlign: "center", marginBottom: "32px" }}>
+                        <a 
+              onClick={() => navigate("/")} 
+              style={{ 
+                position: "absolute", 
+                left: 30, 
+                top: 40, 
+                display: "flex", 
+                alignItems: "center", 
+                color: "#6B7280", 
+                fontSize: "14px",
+                textDecoration: "none",
+                fontWeight: 500
+              }}
+            >
+              <ArrowLeftOutlined style={{ marginRight: 4 }} /> Volver
+            </a>
             <img
               src={Logo}
               alt="Logo Ecolink"
